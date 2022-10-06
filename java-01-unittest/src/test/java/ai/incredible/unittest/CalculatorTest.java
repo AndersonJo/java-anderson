@@ -1,4 +1,4 @@
-package ai.incredible;
+package ai.incredible.unittest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

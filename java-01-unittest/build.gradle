@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 
-group 'ai.incredible.java-unittest'
+group 'ai.incredible.unittest'
 version '1.0-SNAPSHOT'
 
 repositories {
@@ -15,5 +15,9 @@ dependencies {
 }
 
 test {
+    // Enable JUnit 5 (Gradle 4.6+). 이것만 넣으면 실제로 Junit이 실행된다
     useJUnitPlatform()
+
+    // Always run tests, even when nothing changed.
+    dependsOn 'cleanTest'
 }

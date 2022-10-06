@@ -1,4 +1,4 @@
-package ai.incredible;
+package ai.incredible.unittest;
 
 public class Calculator {
     public static void main(String[] args) {
