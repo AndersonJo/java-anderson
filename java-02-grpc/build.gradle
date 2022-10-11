@@ -1,0 +1,57 @@
+plugins {
+    // Provide convenience executables for trying out the examples.
+    id 'application'
+    id 'com.google.protobuf' version '0.8.18'
+}
+
+group 'ai.incredible.grpc'
+version '1.0-SNAPSHOT'
+
+repositories {
+    maven { url "https://maven-central.storage-download.googleapis.com/maven2/" }
+    mavenCentral()
+}
+
+def grpcVersion = '1.49.2'
+def protobufVersion = '3.21.7'
+def protocVersion = protobufVersion
+
+dependencies {
+    implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+    implementation "io.grpc:grpc-stub:${grpcVersion}"
+    compileOnly "org.apache.tomcat:annotations-api:6.0.53"
+
+    // examples/advanced need this for JsonFormat
+    implementation "com.google.protobuf:protobuf-java-util:${protobufVersion}"
+
+    runtimeOnly "io.grpc:grpc-netty-shaded:${grpcVersion}"
+
+    testImplementation "io.grpc:grpc-testing:${grpcVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.9.0"
+    testImplementation "org.mockito:mockito-core:4.8.0"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.9.0"
+
+}
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:${protocVersion}" }
+    plugins { grpc { artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}" } }
+    generateProtoTasks {
+        all()*.plugins { grpc {} }
+    }
+}
+
+// Inform IDEs like IntelliJ IDEA, Eclipse or NetBeans about the generated code.
+sourceSets {
+    main {
+        java {
+            srcDirs 'build/generated/source/proto/main/grpc'
+            srcDirs 'build/generated/source/proto/main/java'
+        }
+    }
+}
+
+
+test {
+    useJUnitPlatform()
+}
