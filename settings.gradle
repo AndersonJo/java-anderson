@@ -1,4 +1,5 @@
 rootProject.name = 'java-anderson'
 include 'java-01-unittest'
 include 'java-02-grpc'
+include 'java-03-solr'
 

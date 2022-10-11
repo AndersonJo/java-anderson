@@ -2,6 +2,7 @@ plugins {
     id 'java'
 }
 
+
 group 'ai.incredible.unittest'
 version '1.0-SNAPSHOT'
 
