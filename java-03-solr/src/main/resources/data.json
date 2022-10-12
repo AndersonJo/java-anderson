@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Anderson",
+    "userId": 1,
+    "tags": [
+      "Machine Learning",
+      "Statistics",
+      "Mathematics"
+    ]
+  },
+  {
+    "name": "Power",
+    "userId": 2,
+    "tags": [
+      "Statistics"
+    ]
+  },
+  {
+    "name": "Batman",
+    "userId": 3,
+    "tags": [
+      "Machine Learning",
+      "Mathematics"
+    ]
+  },
+  {
+    "name": "Tesla",
+    "userId": 4,
+    "tags": [
+      "Car",
+      "Machine Learning"
+    ]
+  }
+]

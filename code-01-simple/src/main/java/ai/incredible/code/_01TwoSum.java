@@ -1,4 +1,4 @@
-package ai.incredible.code.simple;
+package ai.incredible.code;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -1,8 +1,9 @@
-package ai.incredible.code.simple;
+package ai.incredible.code;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import ai.incredible.code._01TwoSum;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
