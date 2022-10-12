@@ -6,7 +6,10 @@ import com.google.gson.Gson;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
@@ -54,10 +57,18 @@ class SolrTest {
     @Test
     void testSimpleQuerying() throws SolrServerException, IOException {
         // Input a document
+        ArrayList<Long> bookIds = new ArrayList<Long> (Arrays.asList(1L, 2L, 3L, 4L, 5L));
+
         SolrInputDocument document = new SolrInputDocument();
         document.addField("id", "123456");
         document.addField("name", "Kenmore Dishwasher");
         document.addField("price", "599.99");
+        document.addField("bookIds", bookIds);
+        document.addField("cum", 10L);
+        document.addField("cum", 20L);
+        document.addField("cum", 30L);
+        document.addField("cum", 40L);
+        document.addField("cum", 50L);
         client.add(document);
         client.commit();
 
@@ -72,7 +83,52 @@ class SolrTest {
         for (SolrDocument doc : response.getResults()) {
             assertEquals("Kenmore Dishwasher", doc.getFieldValue("name"));
             assertEquals((Double) 599.99, (Double) doc.getFieldValue("price"));
+
+            // 처리 방식이 다르다. Collection<String> 으로 되어 있음
+            ArrayList<Long> values = doc.getFieldValues("bookIds")
+                    .stream()
+                    .map(c -> Long.parseLong((String)c))
+                    .collect(Collectors.toCollection(ArrayList::new));
+            for(int i=0; i < values.size(); i++){
+                assertEquals(i+1, values.get(i));
+            }
+
+            // Collection<Long> 으로 되어 있음.
+            ArrayList<Long> values2 = doc.getFieldValues("cum")
+                    .stream()
+                    .map(c -> (Long) c)
+                    .collect(Collectors.toCollection(ArrayList::new));
+            for(int i=0; i < values.size(); i++){
+                assertEquals((i+1) * 10L, values2.get(i));
+            }
+
         }
+
+        // Get Book ID
+        query = new SolrQuery();
+        query.set("q", "bookIds:3");
+        response = client.query(query);
+        assertEquals(1, response.getResults().size());
+        assertEquals(599.99, response.getResults().get(0).getFieldValue("price"));
+
+        // Get not-existing book ID
+        query = new SolrQuery();
+        query.set("q", "bookIds:100");
+        response = client.query(query);
+        assertEquals(0, response.getResults().size());
+
+        // Get cum
+        query = new SolrQuery();
+        query.set("q", "cum:(20 100)");
+        response = client.query(query);
+        assertEquals(1, response.getResults().size());
+        assertEquals(599.99, response.getResults().get(0).getFieldValue("price"));
+
+        // Get non-existing cum
+        query = new SolrQuery();
+        query.set("q", "cum:(500 100)");
+        response = client.query(query);
+        assertEquals(0, response.getResults().size());
 
         client.deleteByQuery("*:*");
         client.commit();
