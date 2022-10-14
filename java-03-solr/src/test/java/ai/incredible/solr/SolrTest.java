@@ -37,8 +37,6 @@ class SolrTest {
     public SolrTest() throws SolrServerException, IOException {
         client = new HttpSolrClient.Builder(url).build();
         client.setParser(new XMLResponseParser());
-        System.out.println(getClass());
-
     }
 
     User[] getGsonData() {
@@ -69,6 +67,9 @@ class SolrTest {
         document.addField("cum", 30L);
         document.addField("cum", 40L);
         document.addField("cum", 50L);
+        document.setField("status", "Good");
+        document.setField("status", "Bad");
+        document.setField("status", "AWESOME!");
         client.add(document);
         client.commit();
 
@@ -102,6 +103,9 @@ class SolrTest {
                 assertEquals((i+1) * 10L, values2.get(i));
             }
 
+            // Test setField for duplicate array.
+            assertEquals(1, doc.getFieldValues("status").size());
+
         }
 
         // Get Book ID
@@ -130,6 +134,8 @@ class SolrTest {
         response = client.query(query);
         assertEquals(0, response.getResults().size());
 
+
+
         client.deleteByQuery("*:*");
         client.commit();
     }
@@ -154,6 +160,46 @@ class SolrTest {
         // Validation
         SolrDocumentList docs = response.getResults();
         assertEquals(2, docs.size());
+
+        // Delete
+        client.deleteByQuery("*:*");
+        client.commit();
+    }
+
+    @Test
+    void testAddFieldVSSetField() throws SolrServerException, IOException {
+        SolrInputDocument document = new SolrInputDocument();
+        document.setField("id", "987654321");
+        document.setField("status1", "Good");
+        document.setField("status1", "Bad");
+        document.setField("status1", "AWESOME!");
+        document.addField("status2", "Good");
+        document.addField("status2", "Bad");
+        document.addField("status2", "AWESOME!");
+        client.add(document);
+        client.commit();
+
+        SolrQuery query = new SolrQuery();
+        query.set("q", "id:987654321");
+        QueryResponse response = client.query(query);
+        SolrDocument responseDocument = response.getResults().get(0);
+
+//        System.out.println(responseDocument.getFieldValue("status1"));
+//        System.out.println(responseDocument.getFieldValue("status2"));
+//
+//        System.out.println(responseDocument.getFieldValues("status1"));
+//        System.out.println(responseDocument.getFieldValues("status2"));
+
+        ArrayList<String> status1 = responseDocument.getFieldValues("status1")
+                .stream().map(v -> (String)v)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        ArrayList<String> status2 = responseDocument.getFieldValues("status2")
+                .stream().map(v -> (String)v)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        assertEquals(1, status1.size());
+        assertEquals(3, status2.size());
 
         // Delete
         client.deleteByQuery("*:*");
