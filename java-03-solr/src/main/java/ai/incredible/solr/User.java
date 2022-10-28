@@ -8,6 +8,7 @@ import lombok.Setter;
 public class User {
     private String name;
     private int userId;
+    private int age;
     private String[] tags;
 
 }

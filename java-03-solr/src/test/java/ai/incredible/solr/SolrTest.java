@@ -20,13 +20,15 @@ import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
  * 시작전에 다음을 실행.
  * ./bin/solr create -c users
  * ./bin/solr start
- *
+ * <p>
  * 삭제는..
  * rm -rf server/solr/users/
  * 그리고 재시작
@@ -42,7 +44,13 @@ class SolrTest {
         client.setParser(new XMLResponseParser());
     }
 
-    User[] getGsonData() {
+    @AfterEach
+    void before() throws SolrServerException, IOException {
+        client.deleteByQuery("*:*");
+        client.commit();
+    }
+
+    User[] getUserData() {
         try (Reader reader = new InputStreamReader(Objects.requireNonNull(getClass()
                 .getClassLoader()
                 .getResourceAsStream("data.json")))) {
@@ -66,6 +74,33 @@ class SolrTest {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
+
+    void storeUserData() throws SolrServerException, IOException {
+        User[] users = getUserData();
+        for (User user : users) {
+            SolrInputDocument doc = new SolrInputDocument();
+            doc.setField("name", user.getName());
+            doc.setField("id", user.getUserId());
+            doc.setField("age", user.getAge());
+            doc.setField("tags", user.getTags());
+            client.add(doc);
+        }
+        client.commit();
+    }
+
+    void storeLocationData() throws SolrServerException, IOException {
+        Location[] locations = getLocationData();
+        for (Location location : locations) {
+            SolrInputDocument doc = new SolrInputDocument();
+            doc.addField("name", location.getName());
+            doc.addField("age", location.getAge());
+            doc.addField("ab", location.getAb());
+            doc.addField("lat", location.getLat());
+            doc.addField("lng", location.getLng());
+            client.add(doc);
+        }
+        client.commit();
     }
 
 
@@ -151,22 +186,11 @@ class SolrTest {
         response = client.query(query);
         assertEquals(0, response.getResults().size());
 
-
-        client.deleteByQuery("*:*");
-        client.commit();
     }
 
     @Test
     void testGSonSolrQuerying() throws SolrServerException, IOException {
-        User[] users = getGsonData();
-        for (User user : users) {
-            SolrInputDocument doc = new SolrInputDocument();
-            doc.addField("id", user.getUserId());
-            doc.addField("name", user.getName());
-            doc.addField("tags", user.getTags());
-            client.add(doc);
-            client.commit();
-        }
+        storeUserData();
 
         // Get Response from Solr
         SolrQuery query = new SolrQuery();
@@ -176,10 +200,6 @@ class SolrTest {
         // Validation
         SolrDocumentList docs = response.getResults();
         assertEquals(2, docs.size());
-
-        // Delete
-        client.deleteByQuery("*:*");
-        client.commit();
     }
 
     @Test
@@ -200,12 +220,6 @@ class SolrTest {
         QueryResponse response = client.query(query);
         SolrDocument responseDocument = response.getResults().get(0);
 
-//        System.out.println(responseDocument.getFieldValue("status1"));
-//        System.out.println(responseDocument.getFieldValue("status2"));
-//
-//        System.out.println(responseDocument.getFieldValues("status1"));
-//        System.out.println(responseDocument.getFieldValues("status2"));
-
         ArrayList<String> status1 = responseDocument.getFieldValues("status1")
                 .stream().map(v -> (String) v)
                 .collect(Collectors.toCollection(ArrayList::new));
@@ -216,56 +230,37 @@ class SolrTest {
 
         assertEquals(1, status1.size());
         assertEquals(3, status2.size());
-
-        // Delete
-        client.deleteByQuery("*:*");
-        client.commit();
     }
 
     @Test
-    void testGeoFilter() throws SolrServerException, IOException {
-        Location[] data = getLocationData();
-        for(Location loc : data){
-            SolrInputDocument document = new SolrInputDocument();
-            document.setField("name", loc.getName());
-            document.setField("lat", loc.getLat());
-            document.setField("lng", loc.getLng());
-            client.add(document);
+    void testQueryField() throws SolrServerException, IOException {
+        storeLocationData();
+        SolrQuery query = new SolrQuery();
+        query.set("q", "");
+//        query.set("qf", "ab^10");
+        QueryResponse response = client.query(query);
+
+        for (SolrDocument doc : response.getResults()) {
+            System.out.println(String.format("%s | %s | %s",
+                    doc.getFieldValue("name"),
+                    doc.getFieldValue("age"),
+                    doc.getFieldValue("ab"))
+            );
         }
-        client.commit();
+
+
+    }
+
+    //    @Test
+    void testGeoFilter() throws SolrServerException, IOException {
+        storeLocationData();
         SolrQuery query = new SolrQuery();
         query.set("q", "{!geofilt d=10}&pt=37.499402,127.054207");
         QueryResponse response = client.query(query);
 
-        for(SolrDocument doc:response.getResults()){
+        for (SolrDocument doc : response.getResults()) {
             System.out.println(doc.getFieldValue("name"));
         }
-
-
-
-
     }
-
-
-    public static double distance(double lat1, double lng1, double lat2,
-                                  double lng2, double el1, double el2) {
-
-        final int R = 6371; // Radius of the earth
-
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lng2 - lng1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        double distance = R * c * 1000; // convert to meters
-
-        double height = el1 - el2;
-
-        distance = Math.pow(distance, 2) + Math.pow(height, 2);
-
-        return Math.sqrt(distance);
-    }
-
 
 }

@@ -1,36 +1,50 @@
 [
   {
     "name": "Seoul Dogok Elementary School",
+    "age": 14,
+    "ab": "A",
     "lat": 37.499402,
     "lng": 127.054207
   },
   {
     "name": "Nearby",
+    "age": 20,
+    "ab": "B",
     "lat": 37.498402,
     "lng": 127.054207
   },
   {
     "name": "Posco",
+    "age": 50,
+    "ab": "A",
     "lat": 37.499402,
     "lng": 127.034207
   },
   {
     "name": "KyungBu HighRoad",
+    "age": 32,
+    "ab": "B",
     "lat": 37.469502,
     "lng": 127.034207
   },
   {
     "name": "Yang Ju",
+    "age": 44,
+    "ab": "A",
     "lat": 37.799502,
     "lng": 127.104207
   },
   {
     "name": "OhSan - LakePark",
+    "age": 39,
+    "ab": "B",
     "lat": 37.169502,
     "lng": 127.104207
   },
   {
     "name": "OhSan - LakePark",
+    "age": 30,
+    "ab": "A",
     "lat": 37.169502,
     "lng": 127.104207
   }
