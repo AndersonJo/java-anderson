@@ -1,0 +1,13 @@
+syntax = "proto3";
+package tutorial;
+
+option java_multiple_files = true;
+option java_package = "ai.incredible.protobuf";
+option java_outer_classname = "MyProtobuf";
+
+
+message Person {
+  string name = 1;
+  int32 age = 2;
+  repeated string tags=3;
+}
