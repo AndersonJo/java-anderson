@@ -5,4 +5,6 @@ include 'java-03-solr'
 include 'code-01-simple'
 include 'java-04-spark'
 include 'java-05-protobuf'
+include 'java-06-gson'
+include 'java-06-gson'
 
