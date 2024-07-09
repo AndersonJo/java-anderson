@@ -1,0 +1,29 @@
+plugins {
+    id 'java'
+}
+
+group = 'ai.incredible.lightgbm'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'io.github.metarank:lightgbm4j:4.3.0-1'
+    implementation group: 'com.google.guava', name: 'guava', version: '11.0.2'
+    implementation group: 'org.apache.parquet', name: 'parquet-arrow', version: '1.14.1'
+    implementation group: 'org.apache.arrow', name: 'arrow-vector', version: '16.1.0'
+
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.34'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
