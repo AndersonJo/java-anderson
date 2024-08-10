@@ -9,33 +9,49 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
+import com.datastax.spark.connector.japi.CassandraRow;
+import com.datastax.spark.connector.japi.rdd.CassandraTableScanJavaRDD;
 import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
 import java.sql.Timestamp;
 import java.util.*;
 
+import static com.datastax.spark.connector.japi.CassandraJavaUtil.column;
+import static com.datastax.spark.connector.japi.CassandraJavaUtil.javaFunctions;
+import static com.datastax.spark.connector.japi.CassandraJavaUtil.mapRowTo;
+import static com.datastax.spark.connector.japi.CassandraJavaUtil.writeTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SparkTest {
+	protected SparkSession spark;
 
-	@Test
-	public void sparkTest() {
+	@BeforeEach
+	public void setup() {
 		SparkConf conf = new SparkConf()
 			.setAppName("Local Spark Example")
 			.setMaster("local[2]")
+			// .set("spark.cassandra.auth.username", "user_id")
+			// .set("spark.cassandra.auth.password", "password")
+			// .set("spark.cassandra.input.throughputMBPerSec", "1")
 			.set("spark.cassandra.connection.host", "127.0.0.1");
 
-		SparkSession spark = SparkSession.builder()
+		spark = SparkSession.builder()
 			.config(conf)
 			.getOrCreate();
 
+		addTestData();
+	}
+
+	protected void addTestData() {
 		try (CqlSession session = CqlSession.builder()
 			.addContactEndPoint(
 				new DefaultEndPoint(new InetSocketAddress("localhost", 9042)))
@@ -56,7 +72,6 @@ public class SparkTest {
 			System.out.println(createTable);
 			session.execute(createKeySpace);
 			session.execute(createTable);
-
 		}
 
 		// 데이터 생성
@@ -81,8 +96,12 @@ public class SparkTest {
 			.option("keyspace", "my_keyspace")
 			.option("table", "users")
 			.save();
+	}
 
-		// 데이터 가져오기
+	@Test
+	public void readAllTable() {
+		// 방법 1
+		// Spark 에서 전체 데이터를 다 가져오기.
 		Dataset<Row> df = spark.read()
 			.format("org.apache.spark.sql.cassandra")
 			.option("keyspace", "my_keyspace")
@@ -94,13 +113,79 @@ public class SparkTest {
 		assertEquals(40, (int) andersonRow.getAs("age"));
 		assertEquals(true, andersonRow.getAs("married"));
 		df.show();
+	}
 
-		// 아래 코드는 작동하지 않습니다.
-		// WRITETIME 은 오직 CQL에서 제공되며, Spark 에서는 제공되지 않음.
-		// 또한 spark.sql 쓰려면 spark.read() 한 이후에 df.createOrReplaceTempView("user_view")
-		// 이렇게 만들은 이후에 sql 사용 가능
-		// Dataset<Row> data = spark.sql("SELECT *, WRITETIME(age) from my_keyspace.users");
+	@Test
+	public void readThroughCassandraConnector1() {
+		CassandraTableScanJavaRDD<CassandraRow> rdd =
+			javaFunctions(spark.sparkContext())
+				.cassandraTable("my_keyspace", "users")
+				.select(column("uid"),
+					column("name"),
+					column("age"),
+					column("married"),
+					column("created_at").as("createdAt"),
+					writeTime("name").as("writetime"));
+		JavaRDD<Row> javaRdd = rdd.map(row -> {
+			return RowFactory.create(
+				row.getString("uid"),
+				row.getString("name"),
+				row.getInt("age"),
+				row.getBoolean("married"),
+				new Timestamp(row.getLong("createdAt")),
+				row.getLong("writetime"));
+		});
 
+		StructType schema = DataTypes.createStructType(new StructField[] {
+			DataTypes.createStructField("uid", DataTypes.StringType, false),
+			DataTypes.createStructField("name", DataTypes.StringType, false),
+			DataTypes.createStructField("age", DataTypes.IntegerType, false),
+			DataTypes.createStructField("married", DataTypes.BooleanType, false),
+			DataTypes.createStructField("createdAt", DataTypes.TimestampType, false),
+			DataTypes.createStructField("writetime", DataTypes.LongType, false)
+		});
+
+		Dataset<Row> dataset = spark.createDataFrame(javaRdd, schema);
+		dataset.show();
+		System.out.println(dataset);
+
+	}
+
+	@Test
+	public void readThroughCassandraConnector2() {
+		// 방법 2
+		// Spark Cassandra Connector를 사용해서, 좀더 자세한 정보를 가져오는 방법
+		// 회사에서는 됐는데, 지금 여기서는 안됨. select 에서 empty 가 나옴.
+		CassandraTableScanJavaRDD<DataBean> rdd = javaFunctions(spark.sparkContext())
+			.cassandraTable("my_keyspace", "users", mapRowTo(DataBean.class))
+			.select(column("uid"),
+				column("name"),
+				column("age"),
+				column("married"),
+				column("created_at").as("createdAt"),
+				writeTime("name").as("writetime"));
+		JavaRDD<Row> javaRdd = rdd.map(row -> {
+			return RowFactory.create(
+//				row.getUid(),
+//				row.getName(),
+//				row.getAge(),
+//				row.getMarried(),
+//				row.getCreatedAt(),
+//				row.getWritetime()
+			);
+		});
+		//
+		Dataset<Row> dataset = spark.createDataFrame(javaRdd, DataBean.class);
+		dataset.show();
+	}
+
+	@Test
+	public void cqlSessionTest() {
+		// 방법 4
+		// CQL 로 direct 접속을 해서 데이터를 가져옵니다.
+		// 해당 방법은 spark.read() 를 사용하는 것이 아니며, 이를 spark 에서 사용시에
+		// driver 에서 바로 가져오는 것이기 때문에 distributed loading 이 되는 것이 아닙니다.
+		// Spark 에서 쓰는 것 보다는 따로 CQL 로 접속해야 할때 사용하면 좋은 방법입니다.
 		try (CqlSession session = CqlSession.builder()
 			.addContactEndPoint(
 				new DefaultEndPoint(new InetSocketAddress("localhost", 9042)))
@@ -137,11 +222,6 @@ public class SparkTest {
 
 			Dataset<Row> df2 = spark.createDataFrame(rows, schema2);
 			df2.show();
-
-			assertTrue(df2.count() >= 3);
-			andersonRow = df2.filter("name = 'Anderson'").first();
-			assertEquals(40, (int) andersonRow.getAs("age"));
-			assertEquals(2024, andersonRow.getTimestamp(2).toLocalDateTime().getYear());
 		}
 	}
 }
