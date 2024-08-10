@@ -166,12 +166,12 @@ public class SparkTest {
 				writeTime("name").as("writetime"));
 		JavaRDD<Row> javaRdd = rdd.map(row -> {
 			return RowFactory.create(
-//				row.getUid(),
-//				row.getName(),
-//				row.getAge(),
-//				row.getMarried(),
-//				row.getCreatedAt(),
-//				row.getWritetime()
+				//				row.getUid(),
+				//				row.getName(),
+				//				row.getAge(),
+				//				row.getMarried(),
+				//				row.getCreatedAt(),
+				//				row.getWritetime()
 			);
 		});
 		//
